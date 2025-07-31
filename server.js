@@ -648,6 +648,31 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong' });
 });
 
+/* ------------------ Health and Management Endpoints ------------------ */
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    server: 'EverEsports Server',
+    version: '1.0.0',
+    mongodb: db ? 'connected' : 'disconnected',
+    uptime: process.uptime()
+  });
+});
+
+// Graceful shutdown endpoint
+app.post('/api/shutdown', (req, res) => {
+  console.log('🛑 Received shutdown request');
+  res.json({ message: 'Server shutting down gracefully' });
+  
+  // Gracefully close connections and exit
+  setTimeout(() => {
+    console.log('🛑 Shutting down server...');
+    process.exit(0);
+  }, 1000);
+});
+
 /* ------------------ Start Server and Connect to MongoDB ------------------ */
 // MongoDB connection (native driver)
 MongoClient.connect(process.env.MONGODB_URI || MONGO_URI+DB_NAME)

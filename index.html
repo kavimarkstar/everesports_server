@@ -324,7 +324,7 @@
     <div class="container">
         <div class="header">
             <h1>🚀 EverEsports Server Control Panel</h1>
-            <p>Manage your Node.js server with ease</p>
+            <p>Monitor and test your server directly</p>
         </div>
 
         <div class="content">
@@ -338,8 +338,8 @@
                     </div>
                 </div>
                 <div class="info-card">
-                    <h4>Port</h4>
-                    <div class="value">3000</div>
+                    <h4>Deployment</h4>
+                    <div class="value">GitHub Pages</div>
                 </div>
                 <div class="info-card">
                     <h4>Local IP</h4>
@@ -357,15 +357,15 @@
             <!-- Server Controls -->
             <div class="server-controls">
                 <div class="control-card">
-                    <h3>🖥️ Server Management</h3>
+                    <h3>🖥️ Server Monitoring</h3>
                     <button class="btn btn-success" id="startServer" onclick="startServer()">
-                        ▶️ Start Server
+                        🔍 Check Server
                     </button>
                     <button class="btn btn-danger" id="stopServer" onclick="stopServer()" disabled>
                         ⏹️ Stop Server
                     </button>
                     <button class="btn btn-primary" id="restartServer" onclick="restartServer()" disabled>
-                        🔄 Restart Server
+                        🔄 Refresh Status
                     </button>
                 </div>
 
@@ -400,7 +400,7 @@
                 </div>
                 <div class="form-group">
                     <label for="apiUrl">URL:</label>
-                    <input type="text" id="apiUrl" value="http://localhost:3000/api/stories" placeholder="Enter API URL">
+                    <input type="text" id="apiUrl" value="https://kavimarkstar.github.io/everesports_server/api/stories" placeholder="Enter API URL">
                 </div>
                 <div class="form-group" id="requestBodyGroup" style="display: none;">
                     <label for="requestBody">Request Body (JSON):</label>
@@ -455,6 +455,7 @@
             detectLocalIP();
             updateEndpoint();
             setupFileUpload();
+            checkServerStatus(); // Check initial server status
         });
 
         // Detect local IP
@@ -468,7 +469,7 @@
             }
         }
 
-        // Start Server
+        // Check Server Status
         async function startServer() {
             if (serverStatus === 'online') return;
 
@@ -476,26 +477,34 @@
             addLog('Starting server...', 'info');
 
             try {
-                // In a real implementation, you would start the Node.js process
-                // For this demo, we'll simulate the server start
-                await simulateServerStart();
+                // Check if server is already running
+                const healthCheck = await fetch('https://kavimarkstar.github.io/everesports_server/api/health', { 
+                    method: 'GET',
+                    timeout: 3000
+                });
                 
-                updateStatus('online');
-                addLog('✅ Server started successfully on port 3000', 'success');
-                addLog('🌐 Server URL: http://localhost:3000', 'info');
-                addLog('📊 MongoDB connected successfully', 'success');
-                
-                document.getElementById('startServer').disabled = true;
-                document.getElementById('stopServer').disabled = false;
-                document.getElementById('restartServer').disabled = false;
-                
-                // Update MongoDB status
-                document.getElementById('mongoStatus').innerHTML = 
-                    '<span class="status-indicator status-online"></span>Connected';
+                if (healthCheck.ok) {
+                    updateStatus('online');
+                    addLog('✅ Server is running on GitHub Pages', 'success');
+                    addLog('🌐 Server URL: https://kavimarkstar.github.io/everesports_server', 'info');
+                    addLog('📊 MongoDB connected successfully', 'success');
+                    
+                    document.getElementById('startServer').disabled = true;
+                    document.getElementById('stopServer').disabled = false;
+                    document.getElementById('restartServer').disabled = false;
+                    
+                    // Update MongoDB status
+                    document.getElementById('mongoStatus').innerHTML = 
+                        '<span class="status-indicator status-online"></span>Connected';
+                } else {
+                    throw new Error('Server not responding');
+                }
                 
             } catch (error) {
                 updateStatus('offline');
-                addLog('❌ Failed to start server: ' + error.message, 'error');
+                addLog('❌ Server is not responding', 'error');
+                addLog('💡 The server may be starting up or temporarily unavailable', 'info');
+                addLog('💡 Check GitHub Pages deployment status', 'info');
             }
         }
 
@@ -507,30 +516,39 @@
             addLog('Stopping server...', 'info');
 
             try {
-                await simulateServerStop();
-                
-                updateStatus('offline');
-                addLog('✅ Server stopped successfully', 'success');
-                
-                document.getElementById('startServer').disabled = false;
-                document.getElementById('stopServer').disabled = true;
-                document.getElementById('restartServer').disabled = true;
-                
-                // Update MongoDB status
-                document.getElementById('mongoStatus').innerHTML = 
-                    '<span class="status-indicator status-offline"></span>Disconnected';
+                // Try to gracefully stop the server
+                const response = await fetch('https://kavimarkstar.github.io/everesports_server/api/shutdown', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    updateStatus('offline');
+                    addLog('✅ Server stopped successfully', 'success');
+                    
+                    document.getElementById('startServer').disabled = false;
+                    document.getElementById('stopServer').disabled = true;
+                    document.getElementById('restartServer').disabled = true;
+                    
+                    // Update MongoDB status
+                    document.getElementById('mongoStatus').innerHTML = 
+                        '<span class="status-indicator status-offline"></span>Disconnected';
+                } else {
+                    throw new Error('Failed to stop server gracefully');
+                }
                 
             } catch (error) {
                 addLog('❌ Failed to stop server: ' + error.message, 'error');
+                addLog('💡 You may need to stop the server manually (Ctrl+C)', 'info');
             }
         }
 
-        // Restart Server
+        // Refresh Server Status
         async function restartServer() {
-            addLog('🔄 Restarting server...', 'info');
-            await stopServer();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await startServer();
+            addLog('🔄 Refreshing server status...', 'info');
+            await checkServerStatus();
         }
 
         // Update server status
@@ -581,18 +599,34 @@
             URL.revokeObjectURL(url);
         }
 
-        // Simulate server start
-        async function simulateServerStart() {
-            return new Promise((resolve) => {
-                setTimeout(resolve, 2000);
-            });
-        }
-
-        // Simulate server stop
-        async function simulateServerStop() {
-            return new Promise((resolve) => {
-                setTimeout(resolve, 1000);
-            });
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('https://kavimarkstar.github.io/everesports_server/api/health');
+                if (response.ok) {
+                    const status = await response.json();
+                    updateStatus('online');
+                    document.getElementById('startServer').disabled = true;
+                    document.getElementById('stopServer').disabled = false;
+                    document.getElementById('restartServer').disabled = false;
+                    document.getElementById('mongoStatus').innerHTML = 
+                        '<span class="status-indicator status-online"></span>Connected';
+                } else {
+                    updateStatus('offline');
+                    document.getElementById('startServer').disabled = false;
+                    document.getElementById('stopServer').disabled = true;
+                    document.getElementById('restartServer').disabled = true;
+                    document.getElementById('mongoStatus').innerHTML = 
+                            '<span class="status-indicator status-offline"></span>Disconnected';
+                }
+            } catch (error) {
+                updateStatus('offline');
+                document.getElementById('startServer').disabled = false;
+                document.getElementById('stopServer').disabled = true;
+                document.getElementById('restartServer').disabled = true;
+                document.getElementById('mongoStatus').innerHTML = 
+                    '<span class="status-indicator status-offline"></span>Disconnected';
+            }
         }
 
         // API Testing
@@ -696,7 +730,7 @@
                 if (userId) formData.append('userId', userId);
                 if (description) formData.append('description', description);
                 
-                let uploadUrl = 'http://localhost:3000/';
+                let uploadUrl = 'https://kavimarkstar.github.io/everesports_server/';
                 switch (uploadType) {
                     case 'profile':
                         uploadUrl += 'upload';
