@@ -12,13 +12,13 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [16.x, 18.x]
+        node-version: [16.x, 18.x, 20.x]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
@@ -38,12 +38,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
-    - name: Use Node.js 18
-      uses: actions/setup-node@v3
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
       with:
-        node-version: '18.x'
+        node-version: '20.x'
         cache: 'npm'
     
     - name: Install dependencies
@@ -54,26 +54,23 @@ jobs:
     
     - name: Copy server files
       run: |
-        cp -r config dist/
-        cp -r middleware dist/
-        cp -r utils dist/
-        cp -r uploads dist/
         cp server.js dist/
         cp package.json dist/
         cp env.example dist/
         cp README.md dist/
+        mkdir -p dist/uploads/{profiles,coverphotos,posts/{images,videos},stories,weapon,maps,tournament,banner}
     
     - name: Create production .env
       run: |
         cp env.example dist/.env
         echo "NODE_ENV=production" >> dist/.env
-        echo "PORT=3000" >> dist/.env
+        echo "PORT=${{ secrets.PORT || '3000' }}" >> dist/.env
         echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> dist/.env
         echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> dist/.env
-        echo "CORS_ORIGIN=https://kavimarkstar.github.io" >> dist/.env
+        echo "CORS_ORIGIN=${{ secrets.CORS_ORIGIN || 'https://kavimarkstar.github.io' }}" >> dist/.env
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: server-build
         path: dist/
@@ -85,15 +82,37 @@ jobs:
     
     steps:
     - name: Download build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: server-build
         path: dist/
     
-    - name: Deploy to server
+    - name: Deploy to Vercel
+      if: ${{ secrets.VERCEL_TOKEN }}
       run: |
-        echo "Deploying to production server..."
-        # Add your deployment commands here
-        # Example for Vercel, Netlify, or other hosting services
-        # npm install -g vercel
-        # vercel --prod --token ${{ secrets.VERCEL_TOKEN }} 
+        cd dist
+        npm install -g vercel
+        vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+    
+    - name: Deploy to Railway
+      if: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        cd dist
+        npm install -g @railway/cli
+        railway login --token ${{ secrets.RAILWAY_TOKEN }}
+        railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
+    
+    - name: Deploy to Render
+      if: ${{ secrets.RENDER_TOKEN }}
+      run: |
+        echo "Deploying to Render..."
+        # Render deployment commands would go here
+    
+    - name: Deploy to Heroku
+      if: ${{ secrets.HEROKU_API_KEY }}
+      run: |
+        cd dist
+        npm install -g heroku
+        heroku container:login
+        heroku container:push web --app ${{ secrets.HEROKU_APP_NAME }}
+        heroku container:release web --app ${{ secrets.HEROKU_APP_NAME }} 
