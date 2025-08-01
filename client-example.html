@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EverEsports Server - Client Example</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .upload-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+        .upload-section h3 {
+            margin-top: 0;
+            color: #fff;
+        }
+        input[type="file"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s;
+            margin: 10px 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        .health-check {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        .status.online {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.offline {
+            background: #f44336;
+            color: white;
+        }
+        .api-url {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 EverEsports Server - Client Example</h1>
+        
+        <div class="health-check">
+            <h3>Server Status</h3>
+            <div id="serverStatus" class="status offline">Checking...</div>
+            <div class="api-url" id="apiUrl">API URL: Loading...</div>
+        </div>
+
+        <div class="upload-section">
+            <h3>📸 Upload Profile Image</h3>
+            <input type="text" id="userId" placeholder="Enter User ID" value="user123">
+            <input type="file" id="profileFile" accept="image/*">
+            <button onclick="uploadProfile()">Upload Profile</button>
+            <div id="profileResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="upload-section">
+            <h3>🖼️ Upload Cover Photo</h3>
+            <input type="text" id="coverUserId" placeholder="Enter User ID" value="user123">
+            <input type="file" id="coverFile" accept="image/*">
+            <button onclick="uploadCover()">Upload Cover</button>
+            <div id="coverResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="upload-section">
+            <h3>📝 Upload Story</h3>
+            <input type="text" id="storyUserId" placeholder="Enter User ID" value="user123">
+            <textarea id="storyDescription" placeholder="Enter story description" style="width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; background: rgba(255, 255, 255, 0.9); color: #333; height: 80px;"></textarea>
+            <input type="file" id="storyFile" accept="image/*">
+            <button onclick="uploadStory()">Upload Story</button>
+            <div id="storyResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="upload-section">
+            <h3>🎮 Upload Game Asset</h3>
+            <select id="assetType" style="width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; background: rgba(255, 255, 255, 0.9); color: #333;">
+                <option value="weapon">Weapon</option>
+                <option value="maps">Map</option>
+                <option value="tournament">Tournament</option>
+                <option value="banner">Banner</option>
+            </select>
+            <input type="text" id="gameName" placeholder="Enter Game Name (optional)">
+            <input type="file" id="assetFile" accept="image/*">
+            <button onclick="uploadAsset()">Upload Asset</button>
+            <div id="assetResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="upload-section">
+            <h3>📊 Get Stories</h3>
+            <button onclick="getStories()">Fetch Stories</button>
+            <div id="storiesResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Update this with your server URL
+        const SERVER_URL = 'https://your-everesports-server.vercel.app'; // Update this
+        
+        // Check server health
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/health`);
+                const data = await response.json();
+                
+                document.getElementById('serverStatus').className = 'status online';
+                document.getElementById('serverStatus').textContent = 'Online';
+                document.getElementById('apiUrl').textContent = `API URL: ${SERVER_URL}`;
+                
+                console.log('Server health:', data);
+            } catch (error) {
+                document.getElementById('serverStatus').className = 'status offline';
+                document.getElementById('serverStatus').textContent = 'Offline';
+                document.getElementById('apiUrl').textContent = `API URL: ${SERVER_URL} (Connection failed)`;
+                console.error('Server health check failed:', error);
+            }
+        }
+
+        // Upload profile image
+        async function uploadProfile() {
+            const userId = document.getElementById('userId').value;
+            const file = document.getElementById('profileFile').files[0];
+            
+            if (!userId || !file) {
+                showResult('profileResult', 'Please enter User ID and select a file', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
+
+            try {
+                const response = await fetch(`${SERVER_URL}/upload/profile`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                showResult('profileResult', `Success! Image URL: ${result.imageUrl}`, false);
+            } catch (error) {
+                showResult('profileResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Upload cover photo
+        async function uploadCover() {
+            const userId = document.getElementById('coverUserId').value;
+            const file = document.getElementById('coverFile').files[0];
+            
+            if (!userId || !file) {
+                showResult('coverResult', 'Please enter User ID and select a file', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', userId);
+
+            try {
+                const response = await fetch(`${SERVER_URL}/upload/cover`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                showResult('coverResult', `Success! Cover URL: ${result.imageUrl}`, false);
+            } catch (error) {
+                showResult('coverResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Upload story
+        async function uploadStory() {
+            const userId = document.getElementById('storyUserId').value;
+            const description = document.getElementById('storyDescription').value;
+            const file = document.getElementById('storyFile').files[0];
+            
+            if (!userId || !description || !file) {
+                showResult('storyResult', 'Please enter User ID, description and select a file', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('userId', userId);
+            formData.append('description', description);
+
+            try {
+                const response = await fetch(`${SERVER_URL}/api/stories`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                showResult('storyResult', `Success! Story created with ID: ${result.data.id}`, false);
+            } catch (error) {
+                showResult('storyResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Upload game asset
+        async function uploadAsset() {
+            const assetType = document.getElementById('assetType').value;
+            const gameName = document.getElementById('gameName').value;
+            const file = document.getElementById('assetFile').files[0];
+            
+            if (!file) {
+                showResult('assetResult', 'Please select a file', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            if (gameName) {
+                formData.append('gameName', gameName);
+            }
+
+            try {
+                const response = await fetch(`${SERVER_URL}/upload/${assetType}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                showResult('assetResult', `Success! Asset uploaded: ${result.imagePath}`, false);
+            } catch (error) {
+                showResult('assetResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Get stories
+        async function getStories() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/stories`);
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    const storiesHtml = result.data.map(story => 
+                        `<div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <strong>ID:</strong> ${story.id}<br>
+                            <strong>User:</strong> ${story.userId}<br>
+                            <strong>Description:</strong> ${story.description}<br>
+                            <strong>Image:</strong> <a href="${SERVER_URL}${story.imageUrl}" target="_blank">View</a>
+                        </div>`
+                    ).join('');
+                    
+                    showResult('storiesResult', `Found ${result.data.length} stories:<br>${storiesHtml}`, false);
+                } else {
+                    showResult('storiesResult', 'No stories found', false);
+                }
+            } catch (error) {
+                showResult('storiesResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Helper function to show results
+        function showResult(elementId, message, isError) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : ''}`;
+            element.innerHTML = message;
+        }
+
+        // Initialize
+        checkHealth();
+        
+        // Check health every 30 seconds
+        setInterval(checkHealth, 30000);
+    </script>
+</body>
+</html> 
