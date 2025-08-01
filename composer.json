@@ -1,0 +1,23 @@
+{
+    "name": "everesports/php-server",
+    "description": "PHP equivalent of the Express server for EverEsports",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "mongodb/mongodb": "^1.12",
+        "ext-json": "*",
+        "ext-mongodb": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "EverEsports\\": "src/"
+        }
+    },
+    "scripts": {
+        "start": "php -S localhost:3000 server.php",
+        "test": "php -l server.php"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+} 
